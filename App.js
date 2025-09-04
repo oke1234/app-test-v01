@@ -11,6 +11,7 @@ import {
   FlatList,
   Pressable,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -85,7 +86,20 @@ function GroupPeople({ setCurrentPage, archived = false, items, setItems }) {
         </TouchableOpacity>
       ))}
 
-      <View style={styles.dashedLine} />
+      {(currentGroups.length > 0 && currentPeople.length > 0) && (
+        <View style={styles.dashedLine} />
+      )}
+
+      {currentGroups.length === 0 && currentPeople.length === 0 && (
+        <Text style={{ 
+          color: 'lightgray', 
+          textAlign: 'center', 
+          marginTop: 20, 
+          fontSize: 16 
+        }}>
+          {archived ? 'No archived contacts' : 'No active contacts'}
+        </Text>
+      )}
 
       {currentPeople.map((person) => (
         <TouchableOpacity
@@ -184,7 +198,47 @@ function GroupPeople({ setCurrentPage, archived = false, items, setItems }) {
   );
 }
 
-const PageWithBack = ({ currentPage, pageName, setCurrentPage, title }) => {
+const PageWithBack = ({ currentPage, pageName, setCurrentPage, title, bio, type, archived  }) => {
+  const [profileChatPage, setProfileChatPage] = React.useState(false); // Track if ProfileChat is open
+
+  React.useEffect(() => {
+    if (currentPage !== pageName) {
+      setProfileChatPage(false);
+    }
+  }, [currentPage, pageName]);
+
+  if (currentPage !== pageName) return null;
+
+  if (profileChatPage) {
+    // ProfileChat page
+    return (
+      <View style={{ flex: 1, padding: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <TouchableOpacity onPress={() => setProfileChatPage(false)} style={{ marginRight: 10 }}>
+            <Ionicons name="arrow-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Ionicons
+            name={type === 'group' ? "people-circle" : "person-circle"} // 👈 Switch icon based on type
+            size={30}
+            color={currentPage === 'profile' ? '#2772BC' : 'grey'}
+          />
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 10 }}>{title}</Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text>This is the profile chat page for: {title}</Text>
+          <Text style={{ marginTop: 10 }}>
+            {/* Example bio */}
+            {bio}
+          </Text>
+          <Text style={{ marginTop: 10 }}>
+            users:
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   if (currentPage !== pageName) return null;
 
   return (
@@ -196,21 +250,26 @@ const PageWithBack = ({ currentPage, pageName, setCurrentPage, title }) => {
           alignItems: 'center',
           marginBottom: 20,
         }}>
-        <TouchableOpacity onPress={() => setCurrentPage('people')}>
-          <Text style={{ fontSize: 24, marginRight: 10, color: '#2772BC' }}>
-            {'<'}
-          </Text>
+        <TouchableOpacity 
+          onPress={() => setCurrentPage(archived ? 'archived' : 'people')} 
+          style={{ marginRight: 10 }}
+        >
+          <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
 
-        <Ionicons
-          name="person-circle"
-          size={30}
-          color={currentPage === 'profile' ? '#2772BC' : 'grey'}
-        />
+        <TouchableOpacity onPress={() => setProfileChatPage(true)}> {/* Added */}
+          <Ionicons
+            name={type === 'group' ? "people-circle" : "person-circle"} // 👈 Switch icon based on type
+            size={30}
+            color={currentPage === 'profile' ? '#2772BC' : 'grey'}
+          />
+        </TouchableOpacity>
 
-        <Text style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 10 }}>
-          {title} {/* Show group name here */}
-        </Text>
+        <TouchableOpacity onPress={() => setProfileChatPage(true)}> {/* Added */}
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 10 }}>
+            {title} {/* Show group name here */}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ flex: 1 }}>
@@ -256,7 +315,7 @@ const PageWithBack = ({ currentPage, pageName, setCurrentPage, title }) => {
   );
 };
 
-export function ExpandableGroup({ item, onAdd, onToggle, expanded }) {
+export function ExpandableGroup({ item, onAdd, onToggle, expanded, setCurrentPage }) {
   const { name, bio, type } = item;
   const isPerson = type === 'person';
 
@@ -281,7 +340,10 @@ export function ExpandableGroup({ item, onAdd, onToggle, expanded }) {
         <Text style={{ marginLeft: 10, fontSize: 18 }}>{name}</Text>
 
         <View style={{ flex: 1, alignItems: 'flex-end', marginRight: 5 }}>
-          <TouchableOpacity onPress={() => onAdd(item)}>
+          <TouchableOpacity onPress={() => {
+            onAdd(item);
+            setCurrentPage(item.page);
+          }}>
             <Ionicons name="add-circle" size={30} color="black" />
           </TouchableOpacity>
         </View>
@@ -321,7 +383,7 @@ function TaskItem({
   onPressSubtask,
 }) {
   return (
-    <View style={{ marginBottom: 10 }}>
+    <View style={{ marginBottom: 10 , maxWidth: '85%' }}>
       <TouchableOpacity onPress={onPress} style={styles.taskRow}>
         <TouchableOpacity onPress={onToggle} style={{ marginRight: 10 }}>
           <View style={styles.squareBox}>
@@ -330,11 +392,15 @@ function TaskItem({
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
-          <Text style={[styles.taskText, checked && styles.strikedText]}>
+          <Text numberOfLines={3} style={[styles.taskText, checked && styles.strikedText]}>
             {text}
           </Text>
           {subtitle ? (
-            <Text style={[styles.subtitleText, checked && styles.strikedText]}>
+            <Text 
+              numberOfLines={1}
+              ellipsizeMode="tail" 
+              style={[styles.subtitleText, checked && styles.strikedText,]}
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -372,11 +438,13 @@ function TaskItem({
                 </Text>
 
                 {sub.desc ? (
-                  <Text
+                  <Text 
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
                     style={[
                       styles.subtitleText,
                       (checked || sub.checked) && styles.strikedText,
-                      { marginLeft: 10, marginTop: 2 },
+                      { marginLeft: 10, marginTop: 2},
                     ]}>
                     {sub.desc}
                   </Text>
@@ -407,14 +475,23 @@ export function ExpandableBlock({
   Currentstreak,
   longeststreak,
   consistency,
+  weekStreak,
+  weekConsistency,
+  daysPerWeek,
   workoutCompleted,
   expanded,
   onPress,
   onDeleteGoal,
+  onEditGoalPage,
+  goalDates,
 }) {
   const animation = useMemo(() => new Animated.Value(0), []);
   const [showDropdown, setShowDropdown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const doneCount = countDone(goalDates, daysPerWeek);
+  const doneThisWeek = countThisWeek(goalDates, daysPerWeek);
+
   const dropdownStyle = {
     position: 'absolute',
     top: 42, // right below the button
@@ -434,6 +511,7 @@ export function ExpandableBlock({
     alignItems: 'flex-start', // left align text inside dropdown
   };
 
+
   useEffect(() => {
     Animated.timing(animation, {
       toValue: expanded ? 1 : 0,
@@ -449,277 +527,505 @@ export function ExpandableBlock({
     }
   }, [expanded]);
 
-  return (
-    <View style={{ position: 'relative' }}>
-      {/* Dropdown (outside touchable) */}
-      {showDropdown && !confirmDelete && (
-        <View style={dropdownStyle}>
-          <TouchableOpacity
-            onPress={() => setConfirmDelete(true)}
-            style={{ padding: 10 }}>
-            <Text style={{ color: 'red' }}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+  const screenWidth = Dimensions.get('window').width;
+  const cellSize = screenWidth > 700 ? 40 : 32;
 
-      {confirmDelete && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={{ marginBottom: 15 }}>Are you sure?</Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-around',
-                width: '100%',
-              }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setConfirmDelete(false);
-                  setShowDropdown(false);
-                }}
-                style={styles.modalButton}>
-                <Text>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  onDeleteGoal();
-                  setConfirmDelete(false);
-                  setShowDropdown(false);
-                }}
-                style={[styles.modalButton, { backgroundColor: 'red' }]}>
-                <Text style={{ color: 'white' }}>Yes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+  const inner = Math.round(cellSize * 0.75);
+  const fontSize = Math.round(cellSize * 0.28);
+  const fontSize2 = fontSize*1.5
 
-      <TouchableOpacity onPress={onPress}>
+  const [editMode, setEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState(goalTitle);
+  const [editDays, setEditDays] = useState(daysPerWeek.toString());
+
+
+
+  const renderCalendar = () => {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayWeekDay = (new Date(year, month, 1).getDay() + 6) % 7;
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const totalCells = 35;
+
+    let dayItems = [];
+
+    for (let i = 0; i < totalCells; i++) {
+      let day = null;
+      let isCurrentMonth = true;
+
+      if (i < firstDayWeekDay) {
+        day = daysInPrevMonth - firstDayWeekDay + 1 + i;
+        isCurrentMonth = false;
+      } else if (i >= firstDayWeekDay + daysInMonth) {
+        day = i - (firstDayWeekDay + daysInMonth) + 1;
+        isCurrentMonth = false;
+      } else {
+        day = i - firstDayWeekDay + 1;
+      }
+
+      const today = new Date();
+      const isToday =
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear() &&
+        isCurrentMonth;
+
+      let cellYear = year;
+      let cellMonth = month;
+
+      if (i < firstDayWeekDay) {
+        // previous month
+        cellMonth = month - 1;
+        if (cellMonth < 0) {
+          cellMonth = 11;
+          cellYear -= 1;
+        }
+      } else if (i >= firstDayWeekDay + daysInMonth) {
+        // next month
+        cellMonth = month + 1;
+        if (cellMonth > 11) {
+          cellMonth = 0;
+          cellYear += 1;
+        }
+      }
+
+      const dayString = `${cellYear}-${String(cellMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayDate = new Date(dayString);
+      const firstGoalDate = (goalDates && goalDates.length) 
+        ? new Date(goalDates[0]) 
+        : new Date(); // fallback naar vandaag
+
+      // Determine if this day should show a check
+      let isChecked = false;
+
+      if (daysPerWeek === 0 && firstGoalDate) {
+        const dayDateObj = new Date(dayString);
+        const today = new Date();
+
+        // strip time parts
+        dayDateObj.setHours(0, 0, 0, 0);
+        const firstGoalDateObj = new Date(firstGoalDate);
+        firstGoalDateObj.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        if (dayDateObj >= firstGoalDateObj && dayDateObj <= today) {
+          // Quit goal: check if there is NO completion on this day
+          const hasCompletion = (goalDates || []).some(
+            date => date.slice(0, 10) === dayString
+          );
+          isChecked = !hasCompletion; // green check for skipped days
+        }
+      } else {
+        // Normal goal: check if there is a completion
+        isChecked = (goalDates || []).some(
+          date => date.slice(0, 10) === dayString
+        );
+      }
+
+
+      dayItems.push(
         <View
           style={{
-            padding: 20,
-            marginBottom: 10,
-            backgroundColor: '#eee',
-            borderRadius: 10,
-            height: expanded ? 350 : 260,
-            justifyContent: 'flex-start',
-          }}>
-          {/* Header: title + right icon */}
+            width: cellSize,
+            height: cellSize,
+            borderRadius: cellSize/2,
+            backgroundColor: 'lightgrey',
+            marginVertical: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: isCurrentMonth ? 1 : 0.3,
+          }}
+        >
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
+              width: inner,
+              height: inner,
+              borderRadius: inner / 2,
+              backgroundColor: isChecked ? 'lightgreen' : 'white',
               alignItems: 'center',
-            }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 25 }}>
-              {goalTitle}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {expanded ? (
-                <TouchableOpacity
-                  onPress={() => setShowDropdown(!showDropdown)}>
-                  <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
-                    {streakNumber}
-                  </Text>
-                  <Ionicons name="flame" size={20} color="#DB4A2B" />
-                </>
-              )}
-            </View>
-          </View>
-
-          {/* Stats when expanded */}
-          {expanded && (
-            <View
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            <Text
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-              }}>
-              <View style={{ marginTop: 10, marginBottom: 10 }}>
-                <Text style={{ marginTop: 5 }}>Current streak:</Text>
-                <Text style={{ marginTop: 5 }}>Longest streak:</Text>
-                <Text style={{ marginTop: 10 }}>Consistency:</Text>
-              </View>
-              <View
-                style={{
-                  alignItems: 'flex-end',
-                  marginTop: 10,
-                  marginBottom: 10,
-                }}>
-                <Text style={{ marginTop: 5 }}>{Currentstreak}</Text>
-                <Text style={{ marginTop: 5 }}>{longeststreak}</Text>
-                <Text style={{ marginTop: 10 }}>{consistency}</Text>
+                fontSize,
+                color: 'grey',
+                position: 'absolute',
+                opacity: isChecked ? 0.4 : 1,
+              }}
+            >
+              {day}
+            </Text>
+            {isChecked && (
+              <Ionicons name="checkmark" size={20} color="darkgreen" />
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    return dayItems;
+  };
+
+  return (
+    <View style={{ position: 'relative' }}>
+
+      {!goalTitle || goalTitle.trim() === "" ? (
+        <Text>There are no goals</Text>
+      ) : (
+        <>
+          {/* Dropdown */}
+          {showDropdown && !confirmDelete && !editMode && (
+            <View style={dropdownStyle}>
+              <TouchableOpacity
+                onPress={() => onEditGoalPage()} 
+                style={{ padding: 10 }}
+              >
+                <Text style={{ color: 'blue' }}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setConfirmDelete(true)}
+                style={{ padding: 10 }}
+              >
+                <Text style={{ color: 'red' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+
+          {/* Delete confirmation modal */}
+          {confirmDelete && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <Text style={{ marginBottom: 15 }}>Are you sure?</Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    width: '100%',
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setConfirmDelete(false);
+                      setShowDropdown(false);
+                    }}
+                    style={styles.modalButton}
+                  >
+                    <Text>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      onDeleteGoal();
+                      setConfirmDelete(false);
+                      setShowDropdown(false);
+                    }}
+                    style={[styles.modalButton, { backgroundColor: 'red' }]}
+                  >
+                    <Text style={{ color: 'white' }}>Yes</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           )}
 
-          {/* Days row */}
-          <View
-            style={{
-              flexDirection: 'row',
-              width: 280,
-              alignSelf: 'flex-start',
-              flexWrap: 'wrap',
-              marginTop: 7,
-              marginLeft: -4,
-              marginBottom: 2,
-            }}>
-            {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((day, i) => (
+          <TouchableOpacity onPress={onPress}>
+            <View
+              style={{
+                padding: 20,
+                marginBottom: 10,
+                backgroundColor: '#eee',
+                borderRadius: 10,
+                height: expanded ? 355 : 270,
+                justifyContent: 'flex-start',
+              }}
+            >
+              {/* Header */}
               <View
-                key={i}
                 style={{
-                  width: 30,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginHorizontal: 4,
-                }}>
-                <Text
-                  style={{ fontSize: 12, fontWeight: 'bold', color: 'grey' }}>
-                  {day}
-                </Text>
+                }}
+              >
+                <Text style={{ fontWeight: 'bold', fontSize: 25 }}>{goalTitle}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {expanded ? (
+                    <TouchableOpacity
+                      onPress={() => setShowDropdown(!showDropdown)}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={24} color="#000" />
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <Text style={{ fontWeight: 'bold', fontSize: 20 }}>
+                        {doneCount}
+                      </Text>
+                      <Ionicons name="checkmark-sharp" size={25} color="green" />
+                    </>
+                  )}
+                </View>
               </View>
-            ))}
-          </View>
 
-          {/* Calendar Circles */}
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              width: 280,
-              alignSelf: 'flex-start',
-              marginTop: 0,
-              marginLeft: -4,
-            }}>
-            {(() => {
-              const year = new Date().getFullYear();
-              const month = new Date().getMonth();
-              const daysInMonth = new Date(year, month + 1, 0).getDate();
-              const firstDayWeekDay =
-                (new Date(year, month, 1).getDay() + 6) % 7;
-              const daysInPrevMonth = new Date(year, month, 0).getDate();
-              const totalCells = 35;
+              {/* Stats */}
+              {expanded && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+                  <View>
+                    <Text style={{ marginTop: 5 }}>Days per week:</Text>
+                    {/* <Text style={{ marginTop: 10 }}>Current streak:</Text> */}
+                    {/* <Text style={{ marginTop: 5 }}>Longest streak:</Text> */}
+                    {/* <Text style={{ marginTop: 5 }}>Consistency:</Text> */}
+                    <Text style={{ marginTop: 10 }}>Week streak:</Text> 
+                    <Text style={{ marginTop: 5 }}>Week consistency:</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ marginTop: 5 }}>
+                      {`${doneThisWeek}/${daysPerWeek}`}
+                    </Text>
+                    {/* <Text style={{ marginTop: 10 }}>{Currentstreak}</Text> */}
+                    {/* <Text style={{ marginTop: 5 }}>{longeststreak}</Text> */}
+                    {/* <Text style={{ marginTop: 5 }}>{consistency}</Text> */}
+                    <Text style={{ marginTop: 10 }}>{weekStreak} {weekStreak === 1 ? 'week' : 'weeks'}, ({weekStreak * 7} days)</Text>
+                    <Text style={{ marginTop: 5, marginBottom: 5 }}>{weekConsistency}</Text>
+                  </View>
+                </View>
+              )}
 
-              let dayItems = [];
+              {/* Days row */}
+              <View style={{ flexDirection: 'row', width: '100%', marginTop: 10 }}>
+                {['Mo','Tu','We','Th','Fr','Sa','Su'].map((day,i) => (
+                  <Text
+                    key={i}
+                    style={{
+                      fontSize2,
+                      fontWeight: 'bold',
+                      color: 'grey',
+                      textAlign: 'center',   // center inside its column
+                      width: '14.28%',       // 7 equal columns
+                    }}
+                  >
+                    {day}
+                  </Text>
+                ))}
+              </View>
 
-              for (let i = 0; i < totalCells; i++) {
-                let day = null;
-                let isCurrentMonth = true;
-
-                if (i < firstDayWeekDay) {
-                  day = daysInPrevMonth - firstDayWeekDay + 1 + i;
-                  isCurrentMonth = false;
-                } else if (i >= firstDayWeekDay + daysInMonth) {
-                  day = i - (firstDayWeekDay + daysInMonth) + 1;
-                  isCurrentMonth = false;
-                } else {
-                  day = i - firstDayWeekDay + 1;
-                }
-
-                const today = new Date();
-                const isToday =
-                  day === today.getDate() &&
-                  month === today.getMonth() &&
-                  year === today.getFullYear() &&
-                  isCurrentMonth;
-
-                const isChecked = isToday && workoutCompleted;
-
-                dayItems.push(
+              {/* Calendar grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: '100%', marginTop: 5 }}>
+                {renderCalendar().map((dayComponent, i) => (
                   <View
                     key={i}
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: 'lightgrey',
-                      marginHorizontal: 3,
-                      marginVertical: 1,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: isCurrentMonth ? 1 : 0.3,
-                    }}>
-                    <View
-                      style={{
-                        width: 23.5,
-                        height: 23.5,
-                        borderRadius: 11.75,
-                        backgroundColor: isChecked ? 'lightgreen' : 'white',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                      }}>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          color: 'grey',
-                          position: 'absolute',
-                          opacity: isChecked ? 0.4 : 1,
-                        }}>
-                        {day}
-                      </Text>
-                      {isChecked && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color="darkgreen"
-                        />
-                      )}
-                    </View>
+                      width: '14.28%',      // same as labels
+                      alignItems: 'center', // center circle in the column
+                      marginVertical: 0.5,
+                    }}
+                  >
+                    {dayComponent}
                   </View>
-                );
-              }
-
-              return dayItems;
-            })()}
-          </View>
-        </View>
-      </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }
 
-function calculateStreaks(dates) {
-  if (!dates.length)
-    return { currentStreak: 0, longestStreak: 0, consistency: '0%' };
+function countDone(dates, daysPerWeek) {
+  if (daysPerWeek === 0) {
+    if (!dates.length) return 0;
 
-  // Sort dates ascending
-  const sorted = dates.slice().sort();
+    const firstDate = new Date(dates[0]);
+    const lastDate = new Date();
+    let count = 0;
 
+    for (
+      let d = new Date(firstDate);
+      d <= lastDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const dayString = d.toISOString().split('T')[0];
+      if (!dates.some(date => date.slice(0, 10) === dayString)) {
+        count++;
+      }
+    }
+    return count;
+  } else {
+    return dates.length;
+  }
+}
+
+
+function calculateStreaks(dates, completionsPerWeek) {
+  if (!dates.length) {
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      consistency: '0%',
+      weekStreak: 0,
+      longestWeekStreak: 0,
+      weekConsistency: '0%'
+    };
+  }
+
+  // --- Deduplicate per calendar day for daily streaks ---
+  const uniqueDates = Array.from(
+    new Set(dates.map(d => new Date(d).toISOString().split('T')[0]))
+  );
+  const sorted = uniqueDates.slice().sort();
+
+  // ----- DAILY STREAKS -----
   let longest = 1;
   let current = 1;
-
   for (let i = 1; i < sorted.length; i++) {
     const prev = new Date(sorted[i - 1]);
     const curr = new Date(sorted[i]);
     const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
-
     if (diffDays === 1) current++;
     else current = 1;
-
     if (current > longest) longest = current;
   }
 
-  // Check if last date is today or yesterday for current streak
   const lastDate = new Date(sorted[sorted.length - 1]);
   const today = new Date();
   const diffLastToday = (today - lastDate) / (1000 * 60 * 60 * 24);
+  if (diffLastToday > 1) current = 0;
 
-  if (diffLastToday > 1) current = 0; // streak broken
-
-  // Consistency = (days checked / total days passed) * 100%
+  // Daily consistency
   const firstDate = new Date(sorted[0]);
   const totalDays = Math.floor((today - firstDate) / (1000 * 60 * 60 * 24)) + 1;
-  const consistencyPercent = Math.round((dates.length / totalDays) * 100);
+  const consistencyPercent = Math.round((sorted.length / totalDays) * 100);
+
+  // ----- WEEKLY STREAKS (completions-based) -----
+  const weeks = {};
+  dates.forEach(dateStr => {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const week = getWeekNumber(d);
+    const key = `${year}-W${week}`;
+
+    if (!weeks[key]) weeks[key] = 0;
+    weeks[key]++; // count all completions, even same day
+  });
+
+  // If quit goal → fill in missing weeks with 0 completions
+  if (completionsPerWeek === 0 && dates.length) {
+    const first = new Date(dates[0]);
+    const last = new Date(); // go until today
+    let current = new Date(first);
+
+    while (current <= last) {
+      const year = current.getFullYear();
+      const week = getWeekNumber(current);
+      const key = `${year}-W${week}`;
+      if (!weeks[key]) weeks[key] = 0; // ensure skipped week exists
+      current.setDate(current.getDate() + 7); // jump by 7 days
+    }
+  }
+
+  const weekKeys = Object.keys(weeks).sort();
+  let weekStreak = 0;
+  let longestWeekStreak = 0;
+  let successfulWeeks = 0;
+
+  let lastWeekIndex = null;
+  weekKeys.forEach(wk => {
+    const [year, weekStr] = wk.split('-W');
+    const weekIndex = parseInt(year) * 52 + parseInt(weekStr); // simple index
+
+    let success = false;
+    if (completionsPerWeek === 0) success = weeks[wk] === 0;
+    else success = weeks[wk] >= completionsPerWeek;
+
+    if (success) {
+      if (lastWeekIndex !== null && weekIndex !== lastWeekIndex + 1) {
+        weekStreak = 1; // reset if not consecutive
+      } else {
+        weekStreak++;
+      }
+      if (weekStreak > longestWeekStreak) longestWeekStreak = weekStreak;
+      successfulWeeks++;
+    } else {
+      weekStreak = 0;
+    }
+
+    lastWeekIndex = weekIndex;
+  });
+
+
+  const weekConsistency = weekKeys.length
+    ? Math.round((successfulWeeks / weekKeys.length) * 100) + '%'
+    : '0%';
 
   return {
     currentStreak: current,
     longestStreak: longest,
     consistency: consistencyPercent + '%',
+    weekStreak,
+    longestWeekStreak,
+    weekConsistency
   };
+}
+
+// ISO Week helper
+function getWeekNumber(d) {
+  const date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 4 - (date.getDay() || 7)); // Thursday
+  const yearStart = new Date(date.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return weekNo;
+}
+
+// Count all entries in this week (duplicates allowed)
+function countThisWeek(dates) {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  startOfWeek.setHours(0,0,0,0);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23,59,59,999);
+
+  return dates.filter(d => {
+    const date = new Date(d);
+    return date >= startOfWeek && date <= endOfWeek;
+  }).length;
+}
+
+// Weekly streak only checks unique days per week
+function calculateWeekStreak(dates, completionsPerWeek) {
+  const weeks = {};
+
+  dates.forEach(dateStr => {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const week = getWeekNumber(d);
+    const key = `${year}-W${week}`;
+
+    if (!weeks[key]) weeks[key] = 0;
+    weeks[key]++; // count every completion, even same day
+  });
+
+  const weekKeys = Object.keys(weeks).sort();
+  let weekStreak = 0;
+  let longestWeekStreak = 0;
+
+  weekKeys.forEach(wk => {
+    if (weeks[wk] >= completionsPerWeek) {
+      weekStreak++;
+      if (weekStreak > longestWeekStreak) longestWeekStreak = weekStreak;
+    } else {
+      weekStreak = 0;
+    }
+  });
+
+  return { weekStreak, longestWeekStreak };
 }
 
 export default function App() {
@@ -810,42 +1116,46 @@ export default function App() {
   // Taken afvinken en ongedaan maken
   const toggleCheckTask = (index) => {
     const taskToMove = tasks[index];
-    const today = new Date().toISOString().split('T')[0];
 
     if (taskToMove.text.startsWith('Goal -')) {
       const goalTitle = taskToMove.text.replace('Goal - ', '');
-      setGoalDates((prev) => {
-        const updated = [...(prev[taskToMove.text] || [])];
-        if (!updated.includes(today)) updated.push(today);
-        const { currentStreak, longestStreak, consistency } =
-          calculateStreaks(updated);
+      setGoals((prevGoals) =>
+        prevGoals.map((goal) => {
+          if (goal.title === goalTitle) {
+            // Add a new timestamp for each completion
+            const updatedDates = [...goal.dates, new Date().toISOString()];
+            const {
+              currentStreak,
+              longestStreak,
+              consistency,
+              weekStreak,
+              longestWeekStreak,
+              weekConsistency
+            } = calculateStreaks(updatedDates, goal.daysPerWeek);
 
-        setGoals((prevGoals) =>
-          prevGoals.map((goal) =>
-            goal.title === goalTitle
-              ? {
-                  ...goal,
-                  streakNumber: currentStreak,
-                  Currentstreak: `${currentStreak} days`,
-                  longeststreak: `${longestStreak} days`,
-                  consistency,
-                  workoutCompleted: true,
-                }
-              : goal
-          )
-        );
-        return { ...prev, [taskToMove.text]: updated };
-      });
+            return {
+              ...goal,
+              dates: updatedDates,
+              streakNumber: currentStreak,
+              Currentstreak: `${currentStreak}`,
+              longeststreak: `${longestStreak} days`,
+              consistency,
+              weekStreak,
+              weekConsistency,
+              workoutCompleted: true,
+            };
+          }
+          return goal;
+        })
+      );
     }
 
     if (doneTasks.includes(taskToMove)) {
-      // ongedaan maken
       setWorkoutCompleted(false);
       setTasks([...tasks, taskToMove]);
       setCheckedStates([...checkedStates, false]);
       setDoneTasks(doneTasks.filter((t) => t !== taskToMove));
     } else {
-      // afvinken
       if (taskToMove.text === 'Goal - Workout') setWorkoutCompleted(true);
       setDoneTasks([...doneTasks, taskToMove]);
       setTasks(tasks.filter((_, i) => i !== index));
@@ -853,35 +1163,42 @@ export default function App() {
     }
   };
 
+
   const toggleUncheckDoneTask = (index) => {
     const taskToRestore = doneTasks[index];
-    const today = new Date().toISOString().split('T')[0];
 
     if (taskToRestore.text.startsWith('Goal -')) {
       const goalTitle = taskToRestore.text.replace('Goal - ', '');
-      setGoalDates((prev) => {
-        const updated = (prev[taskToRestore.text] || []).filter(
-          (d) => d !== today
-        );
-        const { currentStreak, longestStreak, consistency } =
-          calculateStreaks(updated);
+      setGoals((prevGoals) =>
+        prevGoals.map((goal) => {
+          if (goal.title === goalTitle) {
+            // Remove the last completion
+            const updatedDates = [...goal.dates];
+            updatedDates.pop();
+            const {
+              currentStreak,
+              longestStreak,
+              consistency,
+              weekStreak,
+              longestWeekStreak,
+              weekConsistency
+            } = calculateStreaks(updatedDates, goal.daysPerWeek);
 
-        setGoals((prevGoals) =>
-          prevGoals.map((goal) =>
-            goal.title === goalTitle
-              ? {
-                  ...goal,
-                  streakNumber: currentStreak,
-                  Currentstreak: `${currentStreak} days`,
-                  longeststreak: `${longestStreak} days`,
-                  consistency,
-                  workoutCompleted: false,
-                }
-              : goal
-          )
-        );
-        return { ...prev, [taskToRestore.text]: updated };
-      });
+            return {
+              ...goal,
+              dates: updatedDates,
+              streakNumber: currentStreak,
+              Currentstreak: `${currentStreak}`,
+              longeststreak: `${longestStreak} days`,
+              consistency,
+              weekStreak,
+              weekConsistency,
+              workoutCompleted: updatedDates.length > 0,
+            };
+          }
+          return goal;
+        })
+      );
     }
 
     if (taskToRestore.text === 'Goal - Workout') {
@@ -893,27 +1210,33 @@ export default function App() {
     setDoneTasks(doneTasks.filter((_, i) => i !== index));
   };
 
+
   // Groepen en mensen beheren
 
   const createUniquePageId = () =>
     `page-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   const handleAdd = (item) => {
-    const newPage = createUniquePageId();
+    const newPage = item.page || createUniquePageId();
+    const isPerson = item.isPerson ?? item.type === 'person';
+
     const newItem = {
+      ...item,
       page: newPage,
-      name: item.name || (item.isPerson ? 'New Person' : 'New Group'),
+      name: item.name || (isPerson ? 'New Person' : 'New Group'),
       bio: item.bio || '',
-      type: item.isPerson ? 'person' : 'group',
+      type: isPerson ? 'person' : 'group',
       status: 'active',
-      icon: item.isPerson ? 'person-circle' : 'people',
-      useMaterial: false,
-      isPerson: item.isPerson,
+      icon: item.icon || (isPerson ? 'person-circle' : 'people'),
+      useMaterial: item.useMaterial ?? false,
+      isPerson,
     };
 
-    setItems((prev) => [newItem, ...prev]);
-    setSuggestions((prev) => prev.filter((s) => s.name !== newItem.name));
-    setPeoplePages((prev) => [...prev, newPage]);
+    setItems(prev => [newItem, ...prev.filter(i => i.page !== newPage)]);
+    setSuggestions(prev => prev.filter(s => s.name !== newItem.name));
+    setPeoplePages(prev => (prev.includes(newPage) ? prev : [...prev, newPage]));
+
+    // NAVIGATE to the page you just ensured exists
     setCurrentPage(newPage);
   };
 
@@ -1011,16 +1334,27 @@ export default function App() {
   const [editedText, setEditedText] = useState('');
   const [editedDesc, setEditedDesc] = useState('');
   const [subtaskFromTaskModal, setSubtaskFromTaskModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [newSubtask, setNewSubtask] = useState('');
 
   const [currentPage, setCurrentPage] = useState('home');
-  const [goalDates, setGoalDates] = useState({});
+
+  {/* 
+  const [goalDates, setGoalDates] = React.useState({
+    "Goal - Workout": ["2025-08-16", "2025-08-10", "2025-08-02"]
+  });
+  */}
+
+  {/* 
   const [streaks, setStreaks] = useState({
     currentStreak: 0,
     longestStreak: 0,
     consistency: '0%',
   });
+  */}
 
   const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [newGoalDays, setNewGoalDays] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
 
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
@@ -1028,18 +1362,46 @@ export default function App() {
   const [goals, setGoals] = useState([
     {
       title: 'Workout',
-      streakNumber: streaks.currentStreak,
-      Currentstreak: `${streaks.currentStreak} days`,
-      longeststreak: `${streaks.longestStreak} days`,
-      consistency: streaks.consistency,
-      workoutCompleted: workoutCompleted,
+      daysPerWeek: 1,
+      streakNumber: 0,
+      Currentstreak: '0',
+      longeststreak: '0 days',
+      consistency: '0%',
+      weekStreak: 0,
+      weekConsistency: '0%',
+      workoutCompleted: false,
+      dates: [
+        "2025-08-10T08:00:00.000Z",
+        "2025-08-11T10:15:00.000Z",
+        "2025-08-12T14:30:00.000Z",
+        "2025-08-13T09:00:00.000Z",
+      ],
+      weeks: [
+        "2025-W31",
+        "2025-W32",
+      ],
     },
   ]);
+
+  const [editGoalIndex, setEditGoalIndex] = useState(null);
+  const [editGoalTitle, setEditGoalTitle] = useState('');
+  const [editGoalDays, setEditGoalDays] = useState('');
+
+  const handleEditGoal = (index) => {
+    setEditGoalIndex(index);
+    setEditGoalTitle(goals[index].title);
+    setEditGoalDays(goals[index].daysPerWeek.toString());
+    setCurrentPage('editGoal');
+  };
+
+
+
 
   // UI helpers
   function onToggle(title) {
     setExpandedTitle((prev) => (prev === title ? null : title));
   }
+  
 
   const handleGoalPress = (index) => {
     setExpandedGoalIndex(expandedGoalIndex === index ? null : index);
@@ -1053,8 +1415,36 @@ export default function App() {
       }
     });
 
+
     return () => keyboardHideListener.remove();
   }, [newTaskText]);
+
+  const inputRef = useRef(null);
+  const pressingAdd = useRef(false);
+
+  useEffect(() => {
+    if (showAddSubtask) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
+  }, [showAddSubtask]);
+
+  useEffect(() => {
+    if (currentPage !== 'target') {
+      setExpandedGoalIndex(null);
+    }
+  }, [currentPage]);
+
+
+  useEffect(() => {
+    if (currentPage !== 'home') {
+      setIsAddingTask(false);
+      setNewTaskText('');
+      setFilteredSuggestions([]);
+    }
+  }, [currentPage]);
+
 
   return (
     <View style={styles.container}>
@@ -1073,10 +1463,11 @@ export default function App() {
             if (currentPage === 'profile') {
               setCurrentPage('help');
             } else if (currentPage === 'home') {
-              setIsAddingTask(true); // add task on home
-            } else if (currentPage === 'people') {
-              setCurrentPage('addpeople'); // go to targetSuggestion page from people
-            } else if (currentPage === 'target') {
+              setIsAddingTask(true); // show input
+              setFilteredSuggestions(goals.map((g) => `Goal - ${g.title}`)); // show suggestions immediately
+            } else if (currentPage === 'people' || currentPage === 'archived') {
+              setCurrentPage('addpeople'); // go to Suggestion page from people or archived
+            } else if (currentPage === 'target' || currentPage === 'editGoal') {
               setCurrentPage('addGoal');
             } else if (currentPage === 'editTask') {
               setShowAddSubtask(true);
@@ -1107,7 +1498,7 @@ export default function App() {
             <TouchableOpacity onPress={() => setCurrentPage('people')}>
               <Ionicons name="arrow-back" size={24} color="black" />
             </TouchableOpacity>
-            <Text style={{ fontSize: 18, marginLeft: 10 }}>Add People</Text>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginLeft: 10 }}>Add People</Text>
           </View>
 
           {/* Search bar */}
@@ -1145,6 +1536,7 @@ export default function App() {
                   onAdd={(it) => moveItem(it.page, 'active')}
                   expanded={expandedTitle === item.page}
                   onToggle={() => onToggle(item.page)}
+                  setCurrentPage={setCurrentPage}
                 />
               ))}
             </ScrollView>
@@ -1161,6 +1553,7 @@ export default function App() {
                     onAdd={(it) => moveItem(it.page, 'active')}
                     expanded={expandedTitle === item.page}
                     onToggle={() => onToggle(item.page)}
+                    setCurrentPage={setCurrentPage}
                   />
                 ))}
               </ScrollView>
@@ -1231,13 +1624,15 @@ export default function App() {
         </View>
       )}
 
-      {[...groups, ...people].map((item) => (
+      {items.map((item) => (
         <PageWithBack
           key={item.page}
           currentPage={currentPage}
           pageName={item.page}
           setCurrentPage={setCurrentPage}
           title={item.name}
+          bio={item.bio}      // 👈 this comes straight from your items var
+          type={item.type} 
           icon={
             item.useMaterial ? (
               <MaterialCommunityIcons name={item.icon} size={24} color="grey" />
@@ -1253,7 +1648,7 @@ export default function App() {
           <View
             style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
             <TouchableOpacity onPress={() => setCurrentPage('people')}>
-              <Ionicons name="chevron-back" size={24} color="#2772BC" />
+              <Ionicons name="arrow-back" size={24} color="black" />
             </TouchableOpacity>
             <Text style={{ fontSize: 20, fontWeight: 'bold', marginLeft: 10 }}>
               Archived
@@ -1264,12 +1659,7 @@ export default function App() {
             <GroupPeople
               setCurrentPage={setCurrentPage}
               archived={true}
-              groups={groups}
-              people={people}
-              archivedGroups={archivedGroups}
-              archivedPeople={archivedPeople}
-              handleAdd={handleAdd}
-              items={items} // <-- pass items here
+              items={[...archivedGroups, ...archivedPeople]} // ✅ merged archived items
               setItems={setItems}
             />
           </ScrollView>
@@ -1281,7 +1671,14 @@ export default function App() {
         contentContainerStyle={{ paddingBottom: 120 }}>
         {currentPage === 'target' && (
           <View>
-            {goals.map((goal, index) => (
+            {goals.length === 0 ? (
+              <Text style={{ textAlign: 'center', marginTop: 20 }}>
+                There are no goals.{"\n"}
+                Add goals by clicking the {""}
+                <Ionicons name="add-circle-outline" size={18} color="black" /> icon in the top right
+              </Text>
+            ) : (
+              goals.map((goal, index) => (
               <ExpandableBlock
                 key={index}
                 goalTitle={goal.title}
@@ -1289,14 +1686,229 @@ export default function App() {
                 Currentstreak={goal.Currentstreak}
                 longeststreak={goal.longeststreak}
                 consistency={goal.consistency}
+                weekStreak={goal.weekStreak}           // ✅ add
+                weekConsistency={goal.weekConsistency}
                 workoutCompleted={goal.workoutCompleted}
                 expanded={expandedGoalIndex === index}
                 onPress={() => handleGoalPress(index)}
-                onDeleteGoal={() => handleDeleteGoal(index)}
+                daysPerWeek={goal.daysPerWeek}
+                onEditGoalPage={() => handleEditGoal(index)}
+                goalDates={goal.dates} 
+                onDeleteGoal={() => {
+                  setGoals(prevGoals => prevGoals.filter((_, idx) => idx !== index));
+                }}       // <-- use dates from goal
+                setGoalDates={(newDates) => {
+                  const updatedGoals = [...goals];
+                  updatedGoals[index].dates = newDates;
+                  setGoals(updatedGoals);
+                }}
               />
-            ))}
+              ))
+            )}
           </View>
         )}
+
+        {currentPage === 'addGoal' && (
+          <View style={styles.taskDetailPageContainer}>
+            <Text style={{ fontSize: 25, fontWeight: 'bold', marginBottom: 10 }}>
+              Add New Goal
+            </Text>
+
+            <TextInput
+              value={newGoalTitle}
+              onChangeText={setNewGoalTitle}
+              placeholder="Goal title"
+              style={[styles.modalTitle, { marginBottom: 10, color: "grey"}]}
+              placeholderTextColor="lightgrey"
+            />
+
+            <TextInput
+              value={newGoalDays}
+              onChangeText={setNewGoalDays}
+              placeholder="Days per week"
+              keyboardType="numeric"
+              style={[styles.modalTitle, { marginBottom: 20, color: "grey" }]}
+              placeholderTextColor="lightgrey"
+            />
+
+            <TouchableOpacity
+              onPress={() => {
+
+                if (newGoalTitle.trim() === '' || newGoalDays.trim() === '') {
+                  alert('Invalid, Please fill in both fields');
+                  return; // stop execution
+                }
+
+                setNewGoalTitle('');
+                setNewGoalDays('');
+                
+                setCurrentPage('target');
+
+                const newGoal = {
+                title: newGoalTitle,
+                daysPerWeek: parseInt(newGoalDays),
+                streakNumber: 0,
+                Currentstreak: '0',
+                longeststreak: '0 days',
+                consistency: '0%',
+                weekStreak: 0,           // ✅ add
+                weekConsistency: '0%', 
+                workoutCompleted: false,
+                dates: [],  // each goal starts with its own empty array
+              };
+              setGoals([...goals, newGoal]);
+
+
+                // Add empty array for new goal in goalDates
+                setGoalDates(prev => ({
+                  ...prev,
+                  [newGoalTitle]: [],
+                }));
+
+                
+
+
+                
+              }}
+
+              style={{ alignSelf: 'center' }}
+              >
+                <Text style={{ color: '#2772BC', fontWeight: 'bold' }}>Add Goal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setNewGoalTitle('');
+                  setNewGoalDays('');
+                  setCurrentPage('target');
+                }}
+                style={{ marginTop: 15, alignSelf: 'center' }}
+              >
+                <Text style={{ color: 'grey' }}>Cancel</Text>
+              </TouchableOpacity>
+          </View>
+        )}
+
+        {currentPage === 'editGoal' && (
+          <View style={styles.taskDetailPageContainer}>
+            <Text style={{ fontSize: 25, fontWeight: 'bold', marginBottom: 10 }}>
+              Edit Goal
+            </Text>
+
+            <TextInput
+              value={editGoalTitle}
+              onChangeText={setEditGoalTitle}
+              placeholder="Goal title"
+              style={[styles.modalTitle, { marginBottom: 10, color: "grey"}]}
+              placeholderTextColor="lightgrey"
+            />
+
+            <TextInput
+              value={editGoalDays}
+              onChangeText={setEditGoalDays}
+              placeholder="Days per week"
+              keyboardType="numeric"
+              style={[styles.modalTitle, { marginBottom: 20, color: "grey"}]}
+              placeholderTextColor="lightgrey"
+            />
+
+            <TouchableOpacity
+              onPress={() => {
+                if (!editGoalTitle.trim() || !editGoalDays.trim()) {
+                  alert('Please fill in both fields');
+                  return;
+                }
+
+                // Update goal in parent state
+                setGoals(prevGoals => {
+                  const updated = [...prevGoals];
+                  updated[editGoalIndex] = {
+                    ...updated[editGoalIndex],
+                    title: editGoalTitle,
+                    daysPerWeek: parseInt(editGoalDays),
+                  };
+                  return updated;
+                });
+
+                setCurrentPage('target');
+                setEditGoalIndex(null);
+                setEditGoalTitle('');
+                setEditGoalDays('');
+                
+                // Update all goal stats immediately
+                setGoals(prevGoals =>
+                  prevGoals.map(goal => {
+                    const weekDone = countThisWeek(goal.dates); // current week progress
+                    const {
+                      currentStreak,
+                      longestStreak,
+                      consistency,
+                      weekStreak,
+                      longestWeekStreak,
+                      weekConsistency
+                    } = calculateStreaks(goal.dates, goal.daysPerWeek);
+
+                    return {
+                      ...goal,
+                      streakNumber: currentStreak,
+                      Currentstreak: `${currentStreak}`,
+                      longeststreak: `${longestStreak} days`,
+                      consistency,
+                      weekStreak,
+                      longestWeekStreak,
+                      weekConsistency,
+                      workoutCompleted: weekDone > 0,
+                    };
+                  }) // <-- close map here
+                );   // <-- close setGoals here
+                
+              }}
+              style={{ alignSelf: 'center' }}
+            >
+              <Text style={{ color: '#2772BC', fontWeight: 'bold' }}>Save</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setCurrentPage('target');
+                setEditGoalIndex(null);
+                setEditGoalTitle('');
+                setEditGoalDays('');
+
+                // Update all goal stats immediately
+                setGoals(prevGoals =>
+                  prevGoals.map(goal => {
+                    const weekDone = countThisWeek(goal.dates); // current week progress
+                    const {
+                      currentStreak,
+                      longestStreak,
+                      consistency,
+                      weekStreak,
+                      longestWeekStreak,
+                      weekConsistency
+                    } = calculateStreaks(goal.dates, goal.daysPerWeek);
+
+                    return {
+                      ...goal,
+                      streakNumber: currentStreak,
+                      Currentstreak: `${currentStreak}`,
+                      longeststreak: `${longestStreak} days`,
+                      consistency,
+                      weekStreak,
+                      longestWeekStreak,
+                      weekConsistency,
+                      workoutCompleted: weekDone > 0,
+                    };
+                  }) // <-- close map here
+                );   // <-- close setGoals here
+              }}
+              style={{ marginTop: 15, alignSelf: 'center' }}
+            >
+              <Text style={{ color: 'grey' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
 
         {currentPage === 'people' && (
           <>
@@ -1309,54 +1921,8 @@ export default function App() {
           </>
         )}
 
-        {currentPage === 'addGoal' && (
-          <View style={styles.taskDetailPageContainer}>
-            <Text
-              style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-              Add New Goal
-            </Text>
+        
 
-            <TextInput
-              value={newGoalTitle}
-              onChangeText={setNewGoalTitle}
-              placeholder="Goal title"
-              style={[styles.modalTitle, { marginBottom: 20 }]}
-            />
-
-            <TouchableOpacity
-              onPress={() => {
-                if (newGoalTitle.trim() === '') return;
-
-                const newGoal = {
-                  title: newGoalTitle,
-                  streakNumber: 0,
-                  Currentstreak: '0 days',
-                  longeststreak: '0 days',
-                  consistency: '0%',
-                  workoutCompleted: false,
-                };
-
-                setGoals([...goals, newGoal]);
-                setNewGoalTitle('');
-                setCurrentPage('target');
-                // No modal to close here
-              }}
-              style={{ alignSelf: 'center' }}>
-              <Text style={{ color: '#2772BC', fontWeight: 'bold' }}>
-                Add Goal
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setNewGoalTitle('');
-                setCurrentPage('target'); // Here you can handle navigation to another page if needed
-              }}
-              style={{ marginTop: 15, alignSelf: 'center' }}>
-              <Text style={{ color: 'grey' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         <Pressable
           style={{ flex: 1 }}
@@ -1381,17 +1947,10 @@ export default function App() {
                     <TextInput
                       placeholder="Type your task"
                       value={newTaskText}
-                      onFocus={() => {
-                        setFilteredSuggestions(
-                          goals.map((g) => `Goal - ${g.title}`)
-                        );
-                      }}
                       onChangeText={(text) => {
                         setNewTaskText(text);
                         if (text.length === 0) {
-                          setFilteredSuggestions(
-                            goals.map((g) => `Goal - ${g.title}`)
-                          );
+                          setFilteredSuggestions(goals.map((g) => `Goal - ${g.title}`));
                         } else {
                           const filtered = goals
                             .map((g) => `Goal - ${g.title}`)
@@ -1413,9 +1972,9 @@ export default function App() {
                           }
                         }, 100); // delay so suggestion tap registers first
                       }}
-                      autoFocus
                       style={styles.underlineInput}
                     />
+
 
                     {filteredSuggestions.length > 0 && (
                       <View
@@ -1565,7 +2124,7 @@ export default function App() {
                 paddingLeft: 10,
               }}
             >
-              <Text>dit is de achternaam</Text>
+              <Text>log in google</Text>
             </View>
 
             <View
@@ -1577,7 +2136,6 @@ export default function App() {
                 paddingLeft: 10,
               }}
             >
-              <Text>Bar 2</Text>
             </View>
 
           </View>
@@ -1631,6 +2189,63 @@ export default function App() {
             />
             {/* Subtasks */}
             <View style={{ marginVertical: 10 }}>
+              {showAddSubtask && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 6, // same as other subtasks
+                  }}
+                >
+                  {/* Checkbox placeholder */}
+                  <TouchableOpacity
+                    style={styles.subtaskBox}
+                    disabled
+                  >
+                    {/* empty, no checkmark yet */}
+                  </TouchableOpacity>
+
+                  {/* Input for new subtask */}
+                  <TextInput
+                    ref={inputRef}
+                    placeholder="Type your subtask"
+                    placeholderTextColor='grey'
+                    value={newSubtask}
+                    onChangeText={setNewSubtask}
+                    style={[
+                      styles.subtitleText2, // same style as collapsed subtasks
+                      { flex: 1, marginLeft: 10, paddingVertical: 0,  },
+                    ]}
+                    autoFocus
+                    onSubmitEditing={() => {
+                      if (newSubtask.trim()) {
+                        const updated = [...tasks];
+                        updated[selectedTask].subtasks.unshift({ // <- use unshift
+                          text: newSubtask,
+                          desc: '',
+                          checked: false,
+                        });
+                        setTasks(updated);
+                        setNewSubtask('');
+                        setShowAddSubtask(false);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (newSubtask.trim()) {
+                        const updated = [...tasks];
+                        updated[selectedTask].subtasks.unshift({ // <- use unshift
+                          text: newSubtask,
+                          desc: '',
+                          checked: false,
+                        });
+                        setTasks(updated);
+                        setNewSubtask('');
+                      }
+                      setShowAddSubtask(false);
+                    }}
+                  />
+                </View>
+              )}
               {tasks[selectedTask]?.subtasks?.map((sub, idx) => (
                 <View key={idx}>
                   {selectedSubtask?.subIdx === idx ? (
@@ -1717,7 +2332,8 @@ export default function App() {
                             {sub.text}
                           </Text>
                           {sub.desc ? (
-                            <Text style={{ fontSize: 12, color: 'grey' }}>
+                            <Text numberOfLines={1}
+                                ellipsizeMode="tail" style={{ fontSize: 12, color: 'grey', maxWidth: '60%' }}>
                               {sub.desc}
                             </Text>
                           ) : null}
@@ -1743,6 +2359,7 @@ export default function App() {
                 onPress={() => saveSubtaskInline()}
               />
             )}
+
             {showDropdown && (
               <>
                 <TouchableOpacity
@@ -1769,34 +2386,8 @@ export default function App() {
                 </View>
               </>
             )}
-            /* Add Subtask - Only if showAddSubtask is true */
-            {showAddSubtask && (
-              <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                <TextInput
-                  placeholder="Add subtask"
-                  value={newSubtask}
-                  onChangeText={setNewSubtask}
-                  style={[styles.input, { flex: 1 }]}
-                />
-                <TouchableOpacity
-                  onPress={() => {
-                    if (newSubtask.trim()) {
-                      const updated = [...tasks];
-                      updated[selectedTask].subtasks.push({
-                        text: newSubtask,
-                        desc: '',
-                        checked: false,
-                      });
-                      setTasks(updated);
-                      setNewSubtask('');
-                      setShowAddSubtask(false); // hide after adding
-                    }
-                  }}
-                  style={{ marginLeft: 15, marginTop: 2 }}>
-                  <Ionicons name="add-circle" size={30} color="grey" />
-                </TouchableOpacity>
-              </View>
-            )}
+
+            
           </View>
         )}
 
@@ -1918,7 +2509,38 @@ export default function App() {
             color={peoplePages.includes(currentPage) ? '#2772BC' : 'grey'}
           />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setCurrentPage('target')}>
+        <TouchableOpacity
+          onPress={() => {
+            setCurrentPage('target');
+
+            // Update all goal stats immediately
+            setGoals(prevGoals =>
+              prevGoals.map(goal => {
+                const weekDone = countThisWeek(goal.dates); // current week progress
+                const {
+                  currentStreak,
+                  longestStreak,
+                  consistency,
+                  weekStreak,
+                  longestWeekStreak,
+                  weekConsistency
+                } = calculateStreaks(goal.dates, goal.daysPerWeek);
+
+                return {
+                  ...goal,
+                  streakNumber: currentStreak,
+                  Currentstreak: `${currentStreak}`,
+                  longeststreak: `${longestStreak} days`,
+                  consistency,
+                  weekStreak,
+                  longestWeekStreak,
+                  weekConsistency,
+                  workoutCompleted: weekDone > 0,
+                };
+              })
+            );
+          }}
+        >
           <MaterialCommunityIcons
             name="target"
             size={60}
@@ -1955,7 +2577,7 @@ const styles = StyleSheet.create({
   },
 
   line: {
-    width: 350,
+    width: '100%',
     height: 2,
     backgroundColor: 'lightgrey',
     alignSelf: 'center',
@@ -2069,15 +2691,6 @@ const styles = StyleSheet.create({
   subtitleText: { fontSize: 14, marginTop: 2, color: 'grey' },
   subtitleText2: { fontSize: 14, marginTop: 2, color: 'black' },
 
-  input: {
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 16,
-    marginBottom: 10,
-  },
   middleIcons: {
     position: 'absolute',
     bottom: 20,
@@ -2119,12 +2732,10 @@ const styles = StyleSheet.create({
   taskDetailPageContainer: {
     backgroundColor: '#fff',
     justifyContent: 'flex-start', // add this
-    flex: 1,
   },
   subtaskPageContainer: {
     backgroundColor: '#fff',
     justifyContent: 'flex-start', // add this
-    flex: 1,
   },
   subtaskBox: {
     height: 20,
